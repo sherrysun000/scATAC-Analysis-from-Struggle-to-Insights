@@ -43,6 +43,8 @@ Use Signac when you need to integrate scATAC-seq with scRNA-seq, or if you're al
 
 # Tutorials:
 ArchR: https://www.archrproject.com/
+
 Signac: https://satijalab.org/signac/
+
 
 By following the steps in this guide and leveraging the power of both ArchR and Signac, I hope u could be able to efficiently analyze your scATAC-seq data and uncover valuable insights into chromatin accessibility and gene regulation. ^_^
