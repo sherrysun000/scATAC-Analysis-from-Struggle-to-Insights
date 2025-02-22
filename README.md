@@ -1,6 +1,6 @@
-##############A Beginner’s Journey to Mastering scATAC-seq Analysis #############3
+# A Beginner’s Journey to Mastering scATAC-seq Analysis 
 
-#Introduction:
+# Introduction:
 During my Ph.D. process, I faced many challenges learning scATAC-seq analysis. One of the major obstacles was the slow data processing speed, especially during intermediate data load steps, and the complexity of working with two separate R packages for analysis: ArchR and Signac.
 I know how overwhelming it can be to dive into scATAC-seq analysis, especially for beginners. That's why I decided to document my learning process, especially mistakes I met, here. This guide is aimed at helping beginners who might face similar challenges as I did, and it provides clear, step-by-step instructions for using ArchR or Signac for scATAC-seq analysis
 
