@@ -12,6 +12,7 @@ ArchR & Signac: I struggled with the fact that ArchR and Signac are separate R p
 
 # Install essential packages for Signac and ArchR
 devtools::install_github("greenleaflab/ArchR")
+
 devtools::install_github("satijalab/signac")
 
 # Tips: Handling Large Datasets Efficiently
