@@ -57,8 +57,9 @@ projHeme2 <- addClusters(
   reducedDims = "Harmony", # Already done batch effect correction by harmony
   method = "Seurat",  ### or scran
   name = "Clusters",
-  resolution = 0.7,
-  force=TRUE,seed=12
+  resolution = 0.7, # Controls granularity; higher = more clusters
+  force=TRUE,
+  seed=12 # For reproducibility
 )
 
 ## Plot the number of cells in each cluster:
