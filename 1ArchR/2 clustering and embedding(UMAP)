@@ -91,9 +91,8 @@ plotPDF(p,
 
 
 
-
-########## Single-cell Embeddings
-### UMAP
+## Single-cell Embeddings 
+## UMAP
 projHeme2 <- addUMAP(
   ArchRProj = projHeme2, 
   reducedDims = "Harmony", 
@@ -101,18 +100,21 @@ projHeme2 <- addUMAP(
   nNeighbors = 30, 
   minDist = 0.5, 
   metric = "cosine",
-  force=TRUE,seed=12
+  force=TRUE,
+  seed=12
 )
 
+## TSNE
 projHeme2 <- addTSNE(
   ArchRProj = projHeme2, 
   reducedDims = "Harmony", 
   name = "TSNE", 
   perplexity = 30,
-  force=TRUE,seed=12
+  force=TRUE,
+  seed=12
 )
 
-
+## plot
 p1 <- plotEmbedding(ArchRProj = projHeme2, colorBy = "cellColData",  name = "Samples", embedding = "TSNE")
 p2 <- plotEmbedding(ArchRProj = projHeme2, colorBy = "cellColData", name = "Clusters", embedding = "TSNE")
 p3 <- plotEmbedding(ArchRProj = projHeme2, colorBy = "cellColData", name = "site",  embedding = "TSNE")
@@ -121,6 +123,7 @@ p5 <- plotEmbedding(ArchRProj = projHeme2, colorBy = "cellColData", name = "Clus
 p6 <- plotEmbedding(ArchRProj = projHeme2, colorBy = "cellColData", name = "site",  embedding = "UMAP")
 ggAlignPlots(p1, p2,p3,p4,p5,p6,type = "h")
 
+## save pdf
 plotPDF(p1, p2,p3,p4,p5,p6, 
         name = "1.2.1_TSNE_UMAP-Sample_Cluster.resolution0.7.pdf", ArchRProj = projHeme2, addDOC = FALSE, width = 5, height = 5)
 
@@ -131,68 +134,59 @@ plotPDF(p1, p2,p3,p4,p5,p6,
 
 
 
-#==============================提取数据个性化展示scATAC聚类可视化======================================
+==============================Custom UMAP ======================================
 
-#提取数据个性化可视化UMAP聚类图等
-df <- projHeme2@embeddings@listData$UMAP$df#scATAC降维UMAP坐标
-#可以使用以下的方式match任何你想要展示的信息
-df$Sample <- projHeme2$Sample[match(rownames(df), projHeme2$cellNames)]
+## 1. Extract UMAP embedding coordinates from ArchR object
+df <- projHeme2@embeddings@listData$UMAP$df  # scATAC UMAP coordinates
+colnames(df)[1:2] <- c("UMAP1", "UMAP2")     # Rename for clarity
+
+## 2. Match metadata to each cell using cell names
+df$Sample  <- projHeme2$Sample[match(rownames(df), projHeme2$cellNames)]
 df$Cluster <- projHeme2$Clusters[match(rownames(df), projHeme2$cellNames)]
-colnames(df)[1:2] <- c("UMAP1", "UMAP2")
 
+## 3. Define a custom metadata column `site` based on Sample name
+cellmeta <- projHeme2@cellColData
+cellmeta$site <- ifelse(grepl("primary", cellmeta$Sample), "primary",
+                        ifelse(grepl("liver", cellmeta$Sample), "liver", NA))
+projHeme2$site <- cellmeta$site  # Save back to project
 
-
-#######计算细胞label的位置，也就是每个cluster的中心
-
-cellmeta<-projHeme2@cellColData
-
-# Site:liver &  primary
-cellmeta$site <- ifelse(grepl("primary", cellmeta$Sample), "primary", ifelse(grepl("liver", cellmeta$Sample), "liver", NA))
-projHeme2$site<-cellmeta$site
-
-
-### UMAP or TSNE
-df <- projHeme2@embeddings@listData$UMAP$df#scATAC降维UMAP坐标
-
-
-#可以使用以下的方式match任何你想要展示的信息
-df$Sample <- projHeme2$Sample[match(rownames(df), projHeme2$cellNames)]
+## 4. Append `site` metadata to the UMAP dataframe
 df$site <- projHeme2$site[match(rownames(df), projHeme2$cellNames)]
-df$Cluster <- projHeme2$Clusters[match(rownames(df), projHeme2$cellNames)]
-colnames(df)[1:2] <- c("UMAP1", "UMAP2")
 
-
-### 选择显示哪一个信息
-cell <- df %>%group_by(site) %>%summarise(UMAP1 = median(UMAP1), UMAP2 = median(UMAP2))
+## 5. Calculate label coordinates: cluster center per site (median UMAP position)
+cell <- df %>%
+  group_by(site) %>%
+  summarise(UMAP1 = median(UMAP1), UMAP2 = median(UMAP2))
 rownames(cell) <- cell$site
-g<-ggplot(df,aes(x= UMAP1 , y = UMAP2 , col=site)) + 
-    geom_point_rast(size = 0.5, shape=16,alpha=0.5)+
-  scale_color_manual(values = c(liver = "#d7191c", primary = "#2b83ba"))+
-  theme_bw()+
+
+## 6. Plot UMAP colored by sample site
+g <- ggplot(df, aes(x = UMAP1, y = UMAP2, color = site)) + 
+  geom_point_rast(size = 0.5, shape = 16, alpha = 0.5) +  # Fast rasterized scatter
+  scale_color_manual(values = c(liver = "#d7191c", primary = "#2b83ba")) +
+  theme_bw() +
   theme(
-    panel.grid.major=element_blank(),
-    panel.grid.minor=element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
     legend.title = element_blank(),
-    legend.key=element_rect(fill='white'),
-    legend.text = element_text(size=20), 
-    legend.key.size=unit(0.8,'cm'),
+    legend.key = element_rect(fill = 'white'),
+    legend.text = element_text(size = 20),
+    legend.key.size = unit(0.8, 'cm'),
     text = element_text(family = "Arial"),
     axis.title = element_text(colour = 'black', size = 15, hjust = 0),
     axis.text = element_blank(),
     axis.ticks = element_blank()
-  )+
-    guides(color = guide_legend(override.aes = list(size=4)))+
-   # geom_text_repel(data=cell,  aes(label=site), color="black", size=4)+
-    ggtitle('UMAP')
-g
+  ) +
+  guides(color = guide_legend(override.aes = list(size = 4))) +
+  geom_text_repel(data = cell, aes(label = site), color = "black", size = 4) +  #  add cluster labels at median positions
+  ggtitle('UMAP')
 
+## save as png
 ggsave(filename = "./0figure/1.2.1_UMAP-Site.resolution0.7.png", 
        width = 9,height = 7, units = "in",dpi = 800            
 )
+
+## save as pdf
 plotPDF(g, name = "1.1_UMAP-Site.resolution0.7.pdf", ArchRProj = projHeme2, addDOC = FALSE, width = 5, height = 5)
-
-
-
 
 
 
