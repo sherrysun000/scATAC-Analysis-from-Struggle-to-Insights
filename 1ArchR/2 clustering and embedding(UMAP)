@@ -51,7 +51,7 @@ projHeme2 <- addHarmony(
   groupBy = "Sample"  # Since this is a multi-sample dataset, we set groupBy = "Sample" to align cells based on their sample origin.
 )
 
-## Clustering
+============================== Clustering  ======================================
 projHeme2 <- addClusters(
   input = projHeme2,
   reducedDims = "Harmony", # Already done batch effect correction by harmony
@@ -90,7 +90,7 @@ plotPDF(p,
         addDOC = FALSE, width = 5, height = 5)
 
 
-## Single-cell Embeddings 
+============================== Embeddings  ======================================
 # UMAP
 projHeme2 <- addUMAP(
   ArchRProj = projHeme2, 
