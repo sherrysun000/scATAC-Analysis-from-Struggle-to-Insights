@@ -1,0 +1,207 @@
+## GSE200813
+
+library(parallel)
+library(ggplot2)
+library(pheatmap)
+library(ArchR)
+library(patchwork)
+library(ComplexHeatmap)
+library(Seurat)
+library(SummarizedExperiment)
+library(GenomicRanges)
+library(pheatmap)
+library(ggplot2)
+library(ggrastr)
+library(dplyr)
+library(ggrepel)
+library(dittoSeq)
+
+## Initialize with hg38
+addArchRThreads(threads = 16)
+addArchRGenome("hg38")
+geneAnnotation <- getGeneAnnotation()
+genomeAnnotation <- getGenomeAnnotation()
+
+
+## Filtering Doublets
+projHeme1 <- readRDS(file = './Save-ProjHeme/Save-ArchR-Project.rds')
+projHeme2 <- filterDoublets(projHeme1)
+table(projHeme2@cellColData$Sample) #cell numbers in each sample
+
+## create a reducedDims object called “IterativeLSI”.
+projHeme2 <- addIterativeLSI(
+  ArchRProj = projHeme2,
+  useMatrix = "TileMatrix", 
+  name = "IterativeLSI", 
+  iterations = 2, 
+  clusterParams = list(  #See Seurat::FindClusters
+    resolution = c(0.2), 
+    sampleCells = 10000, 
+    n.start = 10
+  ), 
+  varFeatures = 25000, 
+  dimsToUse = 1:30
+)
+
+##  Batch Effect Correction with Harmony
+projHeme2 <- addHarmony(
+  ArchRProj = projHeme2,
+  reducedDims = "IterativeLSI",
+  name = "Harmony",
+  groupBy = "Sample"  # Since this is a multi-sample dataset, we set groupBy = "Sample" to align cells based on their sample origin.
+)
+
+## Clustering
+projHeme2 <- addClusters(
+  input = projHeme2,
+  reducedDims = "Harmony", # Already done batch effect correction by harmony
+  method = "Seurat",  ### or scran
+  name = "Clusters",
+  resolution = 0.7,
+  force=TRUE,seed=12
+)
+
+## Plot the number of cells in each cluster:
+# 1. Summarize the number of cells in each cluster
+table(projHeme2$Clusters)
+
+# 2. Create a normalized confusion matrix: Clusters vs. Sample Sites
+cM <- confusionMatrix(paste0(projHeme2$Clusters), paste0(projHeme2$site))
+cM <- cM / Matrix::rowSums(cM)
+
+# 3. Plot heatmap of normalized cell distribution across clusters and sites
+p <- pheatmap::pheatmap(
+  mat = as.matrix(cM), 
+  color = paletteContinuous("whiteBlue"), 
+  border_color = "black"
+)
+p
+
+# 4. Save PNG version (personal habit — for quick viewing or presentations)
+ggsave(filename = "./0figure/1.2.2_Heatmap-Site-Cluster_cellnumber.png", 
+       plot = p,  # ggsave() automatically pick up picture which is last plotted in device 
+       width = 7, height = 7, units = "in", dpi = 800)
+
+# 5. Save the same heatmap as a PDF to the ArchR project output directory -- here is : outputDirectory = "Save-ProjHeme"
+plotPDF(p, 
+        name = "1.2.2_Heatmap-Site-Cluster_cellnumber.Resolution0.7.pdf", 
+        ArchRProj = projHeme2, 
+        addDOC = FALSE, width = 5, height = 5)
+
+
+
+
+########## Single-cell Embeddings
+### UMAP
+projHeme2 <- addUMAP(
+  ArchRProj = projHeme2, 
+  reducedDims = "Harmony", 
+  name = "UMAP", 
+  nNeighbors = 30, 
+  minDist = 0.5, 
+  metric = "cosine",
+  force=TRUE,seed=12
+)
+
+projHeme2 <- addTSNE(
+  ArchRProj = projHeme2, 
+  reducedDims = "Harmony", 
+  name = "TSNE", 
+  perplexity = 30,
+  force=TRUE,seed=12
+)
+
+
+p1 <- plotEmbedding(ArchRProj = projHeme2, colorBy = "cellColData",  name = "Samples", embedding = "TSNE")
+p2 <- plotEmbedding(ArchRProj = projHeme2, colorBy = "cellColData", name = "Clusters", embedding = "TSNE")
+p3 <- plotEmbedding(ArchRProj = projHeme2, colorBy = "cellColData", name = "site",  embedding = "TSNE")
+p4 <- plotEmbedding(ArchRProj = projHeme2, colorBy = "cellColData", name = "Samples",  embedding = "UMAP")
+p5 <- plotEmbedding(ArchRProj = projHeme2, colorBy = "cellColData", name = "Clusters", embedding = "UMAP")
+p6 <- plotEmbedding(ArchRProj = projHeme2, colorBy = "cellColData", name = "site",  embedding = "UMAP")
+ggAlignPlots(p1, p2,p3,p4,p5,p6,type = "h")
+
+plotPDF(p1, p2,p3,p4,p5,p6, 
+        name = "1.2.1_TSNE_UMAP-Sample_Cluster.resolution0.7.pdf", ArchRProj = projHeme2, addDOC = FALSE, width = 5, height = 5)
+
+
+
+
+
+
+
+
+#==============================提取数据个性化展示scATAC聚类可视化======================================
+
+#提取数据个性化可视化UMAP聚类图等
+df <- projHeme2@embeddings@listData$UMAP$df#scATAC降维UMAP坐标
+#可以使用以下的方式match任何你想要展示的信息
+df$Sample <- projHeme2$Sample[match(rownames(df), projHeme2$cellNames)]
+df$Cluster <- projHeme2$Clusters[match(rownames(df), projHeme2$cellNames)]
+colnames(df)[1:2] <- c("UMAP1", "UMAP2")
+
+
+
+#######计算细胞label的位置，也就是每个cluster的中心
+
+cellmeta<-projHeme2@cellColData
+
+# Site:liver &  primary
+cellmeta$site <- ifelse(grepl("primary", cellmeta$Sample), "primary", ifelse(grepl("liver", cellmeta$Sample), "liver", NA))
+projHeme2$site<-cellmeta$site
+
+
+### UMAP or TSNE
+df <- projHeme2@embeddings@listData$UMAP$df#scATAC降维UMAP坐标
+
+
+#可以使用以下的方式match任何你想要展示的信息
+df$Sample <- projHeme2$Sample[match(rownames(df), projHeme2$cellNames)]
+df$site <- projHeme2$site[match(rownames(df), projHeme2$cellNames)]
+df$Cluster <- projHeme2$Clusters[match(rownames(df), projHeme2$cellNames)]
+colnames(df)[1:2] <- c("UMAP1", "UMAP2")
+
+
+### 选择显示哪一个信息
+cell <- df %>%group_by(site) %>%summarise(UMAP1 = median(UMAP1), UMAP2 = median(UMAP2))
+rownames(cell) <- cell$site
+g<-ggplot(df,aes(x= UMAP1 , y = UMAP2 , col=site)) + 
+    geom_point_rast(size = 0.5, shape=16,alpha=0.5)+
+  scale_color_manual(values = c(liver = "#d7191c", primary = "#2b83ba"))+
+  theme_bw()+
+  theme(
+    panel.grid.major=element_blank(),
+    panel.grid.minor=element_blank(),
+    legend.title = element_blank(),
+    legend.key=element_rect(fill='white'),
+    legend.text = element_text(size=20), 
+    legend.key.size=unit(0.8,'cm'),
+    text = element_text(family = "Arial"),
+    axis.title = element_text(colour = 'black', size = 15, hjust = 0),
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+  )+
+    guides(color = guide_legend(override.aes = list(size=4)))+
+   # geom_text_repel(data=cell,  aes(label=site), color="black", size=4)+
+    ggtitle('UMAP')
+g
+
+ggsave(filename = "./0figure/1.2.1_UMAP-Site.resolution0.7.png", 
+       width = 9,height = 7, units = "in",dpi = 800            
+)
+plotPDF(g, name = "1.1_UMAP-Site.resolution0.7.pdf", ArchRProj = projHeme2, addDOC = FALSE, width = 5, height = 5)
+
+
+
+
+
+
+
+saveArchRProject(ArchRProj = projHeme2, outputDirectory = "Save-ProjHeme", load = FALSE)
+
+
+
+
+
+
+
+
