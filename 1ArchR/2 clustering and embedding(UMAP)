@@ -31,16 +31,16 @@ table(projHeme2@cellColData$Sample) #cell numbers in each sample
 ## create a reducedDims object called “IterativeLSI”.
 projHeme2 <- addIterativeLSI(
   ArchRProj = projHeme2,
-  useMatrix = "TileMatrix", 
+  useMatrix = "TileMatrix",  #  chromatin accessibility data
   name = "IterativeLSI", 
   iterations = 2, 
-  clusterParams = list(  #See Seurat::FindClusters
-    resolution = c(0.2), 
+  clusterParams = list(   
+    resolution = c(0.2),  #  Resolution of temporary clustering (not final clustering result)
     sampleCells = 10000, 
     n.start = 10
   ), 
   varFeatures = 25000, 
-  dimsToUse = 1:30
+  dimsToUse = 1:30      # Number of LSI dimensions to retain
 )
 
 ##  Batch Effect Correction with Harmony
