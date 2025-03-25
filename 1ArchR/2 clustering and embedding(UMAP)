@@ -90,9 +90,8 @@ plotPDF(p,
         addDOC = FALSE, width = 5, height = 5)
 
 
-
 ## Single-cell Embeddings 
-## UMAP
+# UMAP
 projHeme2 <- addUMAP(
   ArchRProj = projHeme2, 
   reducedDims = "Harmony", 
@@ -104,7 +103,7 @@ projHeme2 <- addUMAP(
   seed=12
 )
 
-## TSNE
+# TSNE
 projHeme2 <- addTSNE(
   ArchRProj = projHeme2, 
   reducedDims = "Harmony", 
