@@ -15,7 +15,8 @@ library(ggrastr)
 library(dplyr)
 library(ggrepel)
 library(dittoSeq)
-#initialize
+
+## Initialize with hg38
 addArchRThreads(threads = 16)
 addArchRGenome("hg38")
 geneAnnotation <- getGeneAnnotation()
@@ -31,7 +32,6 @@ inputFiles <- c("primary1" = "./primary1/fragments.tsv.gz",
 
 
 ## Creating Arrow files  
-addArchRThreads(threads =16)
 ArrowFiles <- createArrowFiles(
   inputFiles = inputFiles,
   sampleNames = names(inputFiles),
@@ -42,7 +42,6 @@ ArrowFiles <- createArrowFiles(
 )
 
 ## Creating Project 
-addArchRThreads(threads =12)
 doubScores <- addDoubletScores(
   input = ArrowFiles,
   k = 10, #Refers to how many cells near a "pseudo-doublet" to count.
@@ -52,9 +51,8 @@ doubScores <- addDoubletScores(
 
 projHeme1 <- ArchRProject(
   ArrowFiles = ArrowFiles, 
-  outputDirectory = "projHeme1",
-  copyArrows = TRUE, 
-  #This is recommened so that if you modify the Arrow files you have an original copy for later usage.
+  outputDirectory = "Save-ProjHeme",
+  copyArrows = TRUE #This is recommened so that if you modify the Arrow files you have an original copy for later usage.
 )
 
 ## Information about this project
@@ -63,5 +61,5 @@ projHeme1
 table(projHeme1 @cellColData$Sample)
 
 ## Save the ArchR project 
-saveArchRProject(ArchRProj = projHeme1, outputDirectory = "Save-ProjHeme1", load = FALSE)
+saveArchRProject(ArchRProj = projHeme1, outputDirectory = "Save-ProjHeme", load = FALSE)
 # All downstream results (new matrices, UMAPs, etc.) will be stored inside that project directory.
